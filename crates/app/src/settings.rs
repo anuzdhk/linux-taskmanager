@@ -14,6 +14,8 @@ pub struct Settings {
     pub app_history: bool,
     /// CPU / RAM / GPU in the desktop's top bar.
     pub top_bar_stats: bool,
+    /// Closing the window keeps the app running, with stats in the top bar.
+    pub run_in_background: bool,
     /// Ask GitHub for a newer version at most once a day.
     pub check_updates: bool,
 }
@@ -27,6 +29,7 @@ impl Default for Settings {
             always_on_top: false,
             app_history: false,
             top_bar_stats: false,
+            run_in_background: false,
             check_updates: true,
         }
     }
@@ -55,6 +58,7 @@ impl Settings {
                 "always_on_top" => s.always_on_top = value == "true",
                 "app_history" => s.app_history = value == "true",
                 "top_bar_stats" => s.top_bar_stats = value == "true",
+                "run_in_background" => s.run_in_background = value == "true",
                 "check_updates" => s.check_updates = value != "false",
                 _ => {}
             }
@@ -68,13 +72,14 @@ impl Settings {
             fs::create_dir_all(dir)?;
         }
         let text = format!(
-            "# TaskMonitor settings\ntheme = {}\nrefresh = {}\nstart_page = {}\nalways_on_top = {}\napp_history = {}\ntop_bar_stats = {}\ncheck_updates = {}\n",
+            "# TaskMonitor settings\ntheme = {}\nrefresh = {}\nstart_page = {}\nalways_on_top = {}\napp_history = {}\ntop_bar_stats = {}\nrun_in_background = {}\ncheck_updates = {}\n",
             self.theme,
             self.refresh,
             self.start_page,
             self.always_on_top,
             self.app_history,
             self.top_bar_stats,
+            self.run_in_background,
             self.check_updates
         );
         fs::write(path, text)

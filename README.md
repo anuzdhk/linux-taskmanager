@@ -34,6 +34,7 @@
 - **Users**: signed-in sessions with per-user CPU and memory; lock or sign out.
 - **App history** (opt-in): CPU, disk and GPU time per app, kept only on your computer.
 - **Top-bar stats**: one click puts live CPU, RAM and GPU use in your desktop's top bar (system tray). On Ubuntu/GNOME the numbers show next to the icon; on KDE they show when you hover it.
+- **Run in the background** (off by default, in Settings): closing the window keeps TaskMonitor running with the top-bar stats live. Click them to bring the window back; right-click for Quit.
 - **App icons** from your icon theme, with initials for processes that have none.
 - **Update checker**: once a day (or on demand in Settings) TaskMonitor asks GitHub whether a newer version exists and shows an "Update" pill in the top bar if so. It never installs anything by itself, and it can be turned off.
 - Light and dark themes, sidebar icon tooltips, adjustable refresh rate, keyboard shortcuts (Ctrl+1â€“7 for pages, Delete ends the selected task, Esc closes dialogs).
@@ -42,17 +43,17 @@ TaskMonitor is written in Rust with [Slint](https://slint.dev). It uses about 1â
 
 ## Install
 
-Download a package from the [Releases](https://github.com/anuzdhk/linux-taskmanager/releases) page:
+Download a package from the [Releases](https://github.com/anuzdhk/linux-taskmanager/releases) page. Every package comes for x86_64 (Intel/AMD) and ARM64 (aarch64: Raspberry Pi 4/5, Pinebook, ARM laptops and servers). Pick the file with your architecture in its name (`uname -m` prints it):
 
 | Distro | File | Install |
 |---|---|---|
-| Any | `TaskMonitor-<version>-x86_64.AppImage` | `chmod +x TaskMonitor-*.AppImage`, then run it |
-| Ubuntu, Debian, Mint, Pop!_OS | `taskmonitor_<version>-1_amd64.deb` | `sudo apt install ./taskmonitor_*.deb` |
-| Fedora, RHEL, openSUSE | `taskmonitor-<version>-1.x86_64.rpm` | `sudo dnf install ./taskmonitor-*.rpm` |
+| Any | `TaskMonitor-<version>-<x86_64\|aarch64>.AppImage` | `chmod +x TaskMonitor-*.AppImage`, then run it |
+| Ubuntu, Debian, Mint, Pop!_OS, Raspberry Pi OS | `taskmonitor_<version>-1_<amd64\|arm64>.deb` | `sudo apt install ./taskmonitor_*.deb` |
+| Fedora, RHEL, openSUSE | `taskmonitor-<version>-1.<x86_64\|aarch64>.rpm` | `sudo dnf install ./taskmonitor-*.rpm` |
 | Arch, Manjaro, EndeavourOS | [`packaging/aur/PKGBUILD`](packaging/aur/PKGBUILD) | `makepkg -si` |
-| Anything else | `taskmonitor-<version>-x86_64.tar.gz` | unpack, then `sudo ./install.sh` |
+| Anything else | `taskmonitor-<version>-<x86_64\|aarch64>.tar.gz` | unpack, then `sudo ./install.sh` |
 
-The packages run on any x86_64 distro from 2018 onwards (glibc 2.28 or newer). The Services and Users pages need systemd. Admin actions need polkit, and they aren't available in the AppImage.
+The packages run on any x86_64 or ARM64 distro from 2018 onwards (glibc 2.28 or newer). The Services and Users pages need systemd. Admin actions need polkit, and they aren't available in the AppImage.
 
 ## Build from source
 

@@ -151,11 +151,13 @@ export component SettingsPage inherits Card {
     in-out property <bool> always-on-top;
     in-out property <bool> app-history;
     in-out property <bool> top-bar-stats;
+    in-out property <bool> run-in-background;
     in property <string> version;
     // Wayland doesn't let apps keep themselves above other windows.
     in property <bool> wayland;
     callback changed();
     callback top-bar-toggled(bool);
+    callback background-toggled(bool);
     callback clear-history();
     callback open-url(string);
     // Update checker
@@ -335,13 +337,25 @@ export component SettingsPage inherits Card {
                         Row {
                             title: "CPU, RAM and GPU in the top bar";
                             note: "Shows live usage next to your clock. Click it to bring TaskMonitor forward.";
-                            last: true;
                             Switch {
                                 on: root.top-bar-stats;
                                 label: "Show CPU, RAM and GPU in the top bar";
                                 toggled => {
                                     root.top-bar-stats = !root.top-bar-stats;
                                     root.top-bar-toggled(root.top-bar-stats);
+                                }
+                            }
+                        }
+                        Row {
+                            title: "Run in the background";
+                            note: "Closing the window keeps TaskMonitor running, with live stats in the top bar. Right-click them to quit.";
+                            last: true;
+                            Switch {
+                                on: root.run-in-background;
+                                label: "Run in the background";
+                                toggled => {
+                                    root.run-in-background = !root.run-in-background;
+                                    root.background-toggled(root.run-in-background);
                                 }
                             }
                         }

@@ -9,6 +9,7 @@ mod system_pages;
 mod tray;
 mod updates;
 
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::{self, RecvTimeoutError};
 use std::time::Duration;
 
@@ -23,9 +24,24 @@ slint::include_modules!();
 /// Refresh intervals in ms, indexed like `refresh-labels` in shell.slint. 0 = paused.
 const INTERVALS_MS: [u64; 5] = [500, 1000, 2000, 5000, 0];
 
+/// The window was closed while running in the background. The sampler then only
+/// feeds the top bar (and app history) instead of the hidden window.
+static WINDOW_HIDDEN: AtomicBool = AtomicBool::new(false);
+
+/// Brings the window back, whether it was minimised or closed to the background.
+fn show_window(ui: &MainWindow) {
+    WINDOW_HIDDEN.store(false, Ordering::Relaxed);
+    ui.window().set_minimized(false);
+    let _ = ui.show();
+}
+
 fn main() -> Result<(), slint::PlatformError> {
     if std::env::var_os("TASKMONITOR_BENCH").is_some() {
         bench::run();
+        return Ok(());
+    }
+    // Launched again while a copy is running (perhaps in the background): show that one.
+    if tray::activate_running() {
         return Ok(());
     }
     let ui = MainWindow::new()?;
@@ -58,6 +74,7 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.set_on_top(prefs.always_on_top);
     ui.set_app_history(prefs.app_history);
     ui.set_top_bar_stats(prefs.top_bar_stats);
+    ui.set_run_in_background(prefs.run_in_background);
     ui.set_auto_update_check(prefs.check_updates);
     ui.set_update_status(last_checked_text(settings::last_update_check()).into());
     ui.on_check_updates({
@@ -77,8 +94,39 @@ fn main() -> Result<(), slint::PlatformError> {
         let send = send.clone();
         let ui = ui.as_weak();
         move |on| {
-            save_settings(&ui.unwrap());
+            let ui = ui.unwrap();
+            // Running in the background without the top-bar item would leave no way back in.
+            if !on {
+                ui.set_run_in_background(false);
+            }
+            save_settings(&ui);
             send(Cmd::TopBar(on));
+        }
+    });
+    ui.on_background_toggled({
+        let send = send.clone();
+        let ui = ui.as_weak();
+        move |on| {
+            let ui = ui.unwrap();
+            if on && !ui.get_top_bar_stats() {
+                ui.set_top_bar_stats(true);
+                send(Cmd::TopBar(true));
+            }
+            save_settings(&ui);
+        }
+    });
+    // Closing hides the window when running in the background; the top-bar item
+    // brings it back and its menu quits. Otherwise closing quits as usual.
+    ui.window().on_close_requested({
+        let ui = ui.as_weak();
+        move || {
+            let ui = ui.unwrap();
+            if ui.get_run_in_background() && ui.get_top_bar_stats() {
+                WINDOW_HIDDEN.store(true, Ordering::Relaxed);
+            } else {
+                let _ = slint::quit_event_loop();
+            }
+            slint::CloseRequestResponse::HideWindow
         }
     });
     let start = match prefs.start_page.as_str() {
@@ -248,7 +296,8 @@ fn main() -> Result<(), slint::PlatformError> {
         });
     }
 
-    ui.run()?;
+    ui.show()?;
+    slint::run_event_loop_until_quit()?;
     // Let the sampler save app history before the process exits.
     let _ = quit.send(Cmd::Quit);
     let _ = sampler_thread.join();
@@ -263,6 +312,7 @@ fn save_settings(ui: &MainWindow) {
         always_on_top: ui.get_on_top(),
         app_history: ui.get_app_history(),
         top_bar_stats: ui.get_top_bar_stats(),
+        run_in_background: ui.get_run_in_background(),
         check_updates: ui.get_auto_update_check(),
     };
     if let Err(e) = prefs.save() {
@@ -461,6 +511,7 @@ fn spawn_sampler(ui: slint::Weak<MainWindow>) -> (mpsc::Sender<Cmd>, std::thread
                                             let msg = format!("Can't show stats in the top bar: {e}");
                                             let _ = ui.upgrade_in_event_loop(move |ui| {
                                                 ui.set_top_bar_stats(false);
+                                                ui.set_run_in_background(false);
                                                 ui.set_toast(msg.into());
                                             });
                                         }
@@ -508,7 +559,8 @@ fn spawn_sampler(ui: slint::Weak<MainWindow>) -> (mpsc::Sender<Cmd>, std::thread
                     let gpu = gpus.iter().filter_map(|g| g.usage).reduce(f32::max);
                     t.set_label(tray::label(snap.cpu_usage, snap.memory.used(), gpu));
                 }
-                if ui.upgrade_in_event_loop(move |ui| bridge::apply(&ui, update)).is_err() {
+                let hidden = WINDOW_HIDDEN.load(Ordering::Relaxed);
+                if !hidden && ui.upgrade_in_event_loop(move |ui| bridge::apply(&ui, update)).is_err() {
                     break; // window closed
                 }
                 last.0 = snap;
@@ -517,8 +569,8 @@ fn spawn_sampler(ui: slint::Weak<MainWindow>) -> (mpsc::Sender<Cmd>, std::thread
                 // but every 5th tick is enough: it accumulates rates times elapsed time.
                 // The Performance page's Disk activity card needs processes too; every
                 // 2nd tick is plenty for it (rates average over the time between samples).
-                let sample_procs = shows_procs(page)
-                    || (page == Page::Performance && tick.is_multiple_of(2))
+                let sample_procs = (!hidden
+                    && (shows_procs(page) || (page == Page::Performance && tick.is_multiple_of(2))))
                     || (usage_log.is_some() && tick.is_multiple_of(5));
                 if sample_procs {
                     let ps = procs_sampler.get_or_insert_with(ProcessSampler::new);
@@ -535,6 +587,9 @@ fn spawn_sampler(ui: slint::Weak<MainWindow>) -> (mpsc::Sender<Cmd>, std::thread
                 {
                     let _ = log.save(&history_path);
                     last_save = std::time::Instant::now();
+                }
+                if hidden {
+                    continue;
                 }
                 if sample_procs && page == Page::Performance {
                     let rows = processes::disk_rows(&last.1, &mut icons);

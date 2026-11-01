@@ -104,6 +104,9 @@ export component MainWindow inherits Window {
     // CPU / RAM / GPU in the desktop's top bar (system tray).
     in-out property <bool> top-bar-stats;
     callback top-bar-toggled(bool);
+    // Closing the window hides it while the top-bar stats keep running.
+    in-out property <bool> run-in-background;
+    callback background-toggled(bool);
     callback clear-history();
     in-out property <bool> on-top;
     always-on-top: root.on-top;
@@ -325,10 +328,12 @@ export component MainWindow inherits Window {
                     always-on-top <=> root.on-top;
                     app-history <=> root.app-history;
                     top-bar-stats <=> root.top-bar-stats;
+                    run-in-background <=> root.run-in-background;
                     version: root.version;
                     wayland: root.wayland;
                     changed => { root.settings-changed(); }
                     top-bar-toggled(on) => { root.top-bar-toggled(on); }
+                    background-toggled(on) => { root.background-toggled(on); }
                     clear-history => { root.request("clear-history", ""); }
                     open-url(url) => { root.open-url(url); }
                     auto-update-check <=> root.auto-update-check;
