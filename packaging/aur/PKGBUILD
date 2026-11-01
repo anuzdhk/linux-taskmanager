@@ -4,7 +4,7 @@
 # to ssh://aur@aur.archlinux.org/taskmonitor.git. Bump pkgver and sha256sums per release.
 _repo=https://github.com/anuzdhk/linux-taskmanager
 pkgname=taskmonitor
-pkgver=0.1.2
+pkgver=0.1.3
 pkgrel=1
 pkgdesc="A modern task manager for Linux"
 arch=('x86_64' 'aarch64')
