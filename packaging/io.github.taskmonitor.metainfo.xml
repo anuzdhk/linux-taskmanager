@@ -32,6 +32,11 @@
     <category>Monitor</category>
   </categories>
   <releases>
+    <release version="0.1.4" date="2026-11-07">
+      <description>
+        <p>Make the whole interface bigger or smaller with Ctrl+Plus, Ctrl+Minus and Ctrl+0, or in Settings.</p>
+      </description>
+    </release>
     <release version="0.1.3" date="2026-11-01">
       <description>
         <p>ARM64 packages, and an option to keep running in the background with live stats in the top bar.</p>
