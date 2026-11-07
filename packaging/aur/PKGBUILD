@@ -13,7 +13,7 @@ license=('MIT')
 depends=('fontconfig' 'libxkbcommon' 'polkit' 'hicolor-icon-theme')
 makedepends=('cargo')
 source=("$pkgname-$pkgver.tar.gz::$_repo/archive/v$pkgver.tar.gz")
-sha256sums=('56627c5511252dcc6bbdbad92592c407e06ac2ea5e110a05afca5f408c5ec684')
+sha256sums=('58dccef2f3a67acc87df0c932718310fa49cb5e058549ee5a1da075d20738c33')
 # GitHub names the unpacked folder after the repository.
 _dir="linux-taskmanager-$pkgver"
 
