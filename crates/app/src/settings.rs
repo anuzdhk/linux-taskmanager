@@ -18,6 +18,8 @@ pub struct Settings {
     pub run_in_background: bool,
     /// Ask GitHub for a newer version at most once a day.
     pub check_updates: bool,
+    /// Whole-UI zoom in percent.
+    pub zoom: i32,
 }
 
 impl Default for Settings {
@@ -31,6 +33,7 @@ impl Default for Settings {
             top_bar_stats: false,
             run_in_background: false,
             check_updates: true,
+            zoom: 100,
         }
     }
 }
@@ -60,6 +63,7 @@ impl Settings {
                 "top_bar_stats" => s.top_bar_stats = value == "true",
                 "run_in_background" => s.run_in_background = value == "true",
                 "check_updates" => s.check_updates = value != "false",
+                "zoom" => s.zoom = value.parse().unwrap_or(100).clamp(80, 150),
                 _ => {}
             }
         }
@@ -72,7 +76,7 @@ impl Settings {
             fs::create_dir_all(dir)?;
         }
         let text = format!(
-            "# TaskMonitor settings\ntheme = {}\nrefresh = {}\nstart_page = {}\nalways_on_top = {}\napp_history = {}\ntop_bar_stats = {}\nrun_in_background = {}\ncheck_updates = {}\n",
+            "# TaskMonitor settings\ntheme = {}\nrefresh = {}\nstart_page = {}\nalways_on_top = {}\napp_history = {}\ntop_bar_stats = {}\nrun_in_background = {}\ncheck_updates = {}\nzoom = {}\n",
             self.theme,
             self.refresh,
             self.start_page,
@@ -80,7 +84,8 @@ impl Settings {
             self.app_history,
             self.top_bar_stats,
             self.run_in_background,
-            self.check_updates
+            self.check_updates,
+            self.zoom
         );
         fs::write(path, text)
     }
@@ -112,8 +117,8 @@ mod tests {
 
     #[test]
     fn parses_with_defaults_and_clamping() {
-        let s = Settings::parse("theme = 2\nrefresh = 99\napp_history = true\nunknown = x\n");
-        assert_eq!(s, Settings { theme: 2, refresh: 4, app_history: true, ..Default::default() });
+        let s = Settings::parse("theme = 2\nrefresh = 99\napp_history = true\nzoom = 400\nunknown = x\n");
+        assert_eq!(s, Settings { theme: 2, refresh: 4, app_history: true, zoom: 150, ..Default::default() });
         assert_eq!(Settings::parse(""), Settings::default());
     }
 }

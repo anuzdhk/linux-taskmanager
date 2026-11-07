@@ -76,6 +76,15 @@ fn main() -> Result<(), slint::PlatformError> {
     ui.set_top_bar_stats(prefs.top_bar_stats);
     ui.set_run_in_background(prefs.run_in_background);
     ui.set_auto_update_check(prefs.check_updates);
+    ui.set_zoom(prefs.zoom);
+    ui.on_zoom_changed({
+        let ui = ui.as_weak();
+        move || {
+            let ui = ui.unwrap();
+            apply_zoom(&ui);
+            save_settings(&ui);
+        }
+    });
     ui.set_update_status(last_checked_text(settings::last_update_check()).into());
     ui.on_check_updates({
         let ui = ui.as_weak();
@@ -297,11 +306,42 @@ fn main() -> Result<(), slint::PlatformError> {
     }
 
     ui.show()?;
+    // The window only exists once the event loop runs; apply a saved zoom right after.
+    slint::Timer::single_shot(Duration::from_millis(100), {
+        let ui = ui.as_weak();
+        move || apply_zoom(&ui.unwrap())
+    });
     slint::run_event_loop_until_quit()?;
     // Let the sampler save app history before the process exits.
     let _ = quit.send(Cmd::Quit);
     let _ = sampler_thread.join();
     Ok(())
+}
+
+thread_local! {
+    /// (desktop scale factor, scale factor we last set).
+    static SCALE: std::cell::Cell<(f32, f32)> = const { std::cell::Cell::new((1.0, 0.0)) };
+}
+
+/// Zooms the whole UI by scaling Slint's scale factor on top of the desktop's. Called on
+/// every UI update too: the window is created (and the desktop scale can change, say on
+/// another monitor) after start, and either resets the factor to the desktop's.
+fn apply_zoom(ui: &MainWindow) {
+    use slint::platform::WindowEvent;
+    let window = ui.window();
+    let current = window.scale_factor();
+    let (mut desktop, set) = SCALE.get();
+    if current != set {
+        desktop = current;
+    }
+    let factor = desktop * ui.get_zoom() as f32 / 100.0;
+    if factor == current {
+        return;
+    }
+    SCALE.set((desktop, factor));
+    window.dispatch_event(WindowEvent::ScaleFactorChanged { scale_factor: factor });
+    // Same physical window, so the logical size changes with the factor.
+    window.dispatch_event(WindowEvent::Resized { size: window.size().to_logical(factor) });
 }
 
 fn save_settings(ui: &MainWindow) {
@@ -314,6 +354,7 @@ fn save_settings(ui: &MainWindow) {
         top_bar_stats: ui.get_top_bar_stats(),
         run_in_background: ui.get_run_in_background(),
         check_updates: ui.get_auto_update_check(),
+        zoom: ui.get_zoom(),
     };
     if let Err(e) = prefs.save() {
         ui.set_toast(format!("Couldn't save settings: {e}").into());
@@ -560,7 +601,10 @@ fn spawn_sampler(ui: slint::Weak<MainWindow>) -> (mpsc::Sender<Cmd>, std::thread
                     t.set_label(tray::label(snap.cpu_usage, snap.memory.used(), gpu));
                 }
                 let hidden = WINDOW_HIDDEN.load(Ordering::Relaxed);
-                if !hidden && ui.upgrade_in_event_loop(move |ui| bridge::apply(&ui, update)).is_err() {
+                if !hidden && ui.upgrade_in_event_loop(move |ui| {
+                    apply_zoom(&ui);
+                    bridge::apply(&ui, update)
+                }).is_err() {
                     break; // window closed
                 }
                 last.0 = snap;

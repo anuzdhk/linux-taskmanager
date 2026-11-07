@@ -146,6 +146,9 @@ component Shortcut inherits HorizontalLayout {
 export component SettingsPage inherits Card {
     // 0 desktop, 1 light, 2 dark
     in-out property <int> theme;
+    in-out property <int> zoom;
+    callback zoom-changed();
+    property <[int]> zooms: [80, 90, 100, 110, 125, 150];
     in-out property <int> refresh-index;
     in-out property <int> start-page;
     in-out property <bool> always-on-top;
@@ -206,13 +209,26 @@ export component SettingsPage inherits Card {
                         Row {
                             title: "Theme";
                             note: root.theme == 0 ? "Follows your desktop's light or dark setting." : root.theme == 1 ? "Always light." : "Always dark.";
-                            last: true;
                             Segmented {
                                 options: ["Match desktop", "Light", "Dark"];
                                 current: root.theme;
                                 picked(i) => {
                                     root.theme = i;
                                     root.changed();
+                                }
+                            }
+                        }
+                        Row {
+                            title: "Text and interface size";
+                            note: "Makes everything bigger or smaller. Ctrl+Plus and Ctrl+Minus work anywhere, Ctrl+0 resets.";
+                            last: true;
+                            Segmented {
+                                options: ["80%", "90%", "100%", "110%", "125%", "150%"];
+                                // Keyboard steps can land between presets (130%): then none is highlighted.
+                                current: root.zoom == 80 ? 0 : root.zoom == 90 ? 1 : root.zoom == 100 ? 2 : root.zoom == 110 ? 3 : root.zoom == 125 ? 4 : root.zoom == 150 ? 5 : -1;
+                                picked(i) => {
+                                    root.zoom = root.zooms[i];
+                                    root.zoom-changed();
                                 }
                             }
                         }
@@ -322,6 +338,8 @@ export component SettingsPage inherits Card {
                         Shortcut { action: "End the selected task"; keys: ["Delete"]; }
                         Rectangle { height: 1px; background: Theme.line; }
                         Shortcut { action: "Close a dialog"; keys: ["Esc"]; }
+                        Rectangle { height: 1px; background: Theme.line; }
+                        Shortcut { action: "Bigger / smaller / reset size"; keys: ["Ctrl", "+  −  0"]; }
                     }
                 }
 

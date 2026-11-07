@@ -98,6 +98,9 @@ export component MainWindow inherits Window {
         Theme.dark = self.theme-choice == 2 || (self.theme-choice == 0 && Palette.color-scheme == ColorScheme.dark);
     }
     in-out property <int> refresh-index: 1;
+    // Whole-UI zoom in percent (Ctrl+Plus / Ctrl+Minus / Ctrl+0); Rust applies it.
+    in-out property <int> zoom: 100;
+    callback zoom-changed();
     in-out property <int> start-page;
     in-out property <bool> app-history;
     callback settings-changed();
@@ -165,6 +168,9 @@ export component MainWindow inherits Window {
                 if event.text == "5" { root.go(Page.users); return accept; }
                 if event.text == "6" { root.go(Page.details); return accept; }
                 if event.text == "7" { root.go(Page.services); return accept; }
+                if event.text == "+" || event.text == "=" { root.zoom = min(150, root.zoom + 10); root.zoom-changed(); return accept; }
+                if event.text == "-" { root.zoom = max(80, root.zoom - 10); root.zoom-changed(); return accept; }
+                if event.text == "0" { root.zoom = 100; root.zoom-changed(); return accept; }
             }
             if event.text == Key.Escape {
                 root.confirm-action = "";
@@ -323,6 +329,8 @@ export component MainWindow inherits Window {
                 }
                 if root.page == Page.settings: SettingsPage {
                     theme <=> root.theme-choice;
+                    zoom <=> root.zoom;
+                    zoom-changed => { root.zoom-changed(); }
                     refresh-index <=> root.refresh-index;
                     start-page <=> root.start-page;
                     always-on-top <=> root.on-top;
